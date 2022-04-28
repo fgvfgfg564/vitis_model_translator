@@ -1,7 +1,13 @@
-from logging import INFO, log
-import tensorflow as tf
-from .utils import dataset2np, get_quantized_model
 import numpy as np
+from logging import INFO, log
+RUNNERMODE = False
+
+try:
+    import tensorflow as tf
+    from .quant_utils import dataset2np, get_quantized_model
+except ModuleNotFoundError:
+    RUNNERMODE = True
+    print("Tensorflow not detected. The translator is now in RUNNER MODE.")
 
 
 class Program:
@@ -12,6 +18,9 @@ class Program:
         self.exprs.append(expr)
 
     def proc(self, translator):
+        if RUNNERMODE:
+            raise NotImplementedError(
+                "Quantize operations are unavailable in RUNNER MODE!")
         for each in self.exprs:
             each.proc(translator)
 
@@ -37,7 +46,8 @@ class VarDefinition:
                     )
                 input_dataset = translator.calib_dataset
                 if isinstance(input_dataset, tf.data.Dataset):
-                    input_dataset = dataset2np(input_dataset, len(self.varList))
+                    input_dataset = dataset2np(
+                        input_dataset, len(self.varList))
                 for i, each in enumerate(self.varList):
                     translator.varList.setdefault(each, input_dataset[i])
             else:
@@ -130,7 +140,8 @@ class Split:
             translator.checkVarNameDefined(each)
 
         num_splits = len(self.target)
-        splits = np.split(translator.varList.get(self.source), num_splits, axis=3)
+        splits = np.split(translator.varList.get(
+            self.source), num_splits, axis=3)
 
         for i, each in enumerate(self.target):
             translator.varList.set(each, splits[i])
