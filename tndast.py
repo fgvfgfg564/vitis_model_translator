@@ -24,6 +24,10 @@ class Program:
         for each in self.exprs:
             each.proc(translator)
 
+    def run(self, superRunner):
+        for each in self.exprs:
+            each.run(superRunner)
+
 
 class VarDefinition:
     def __init__(self, type, varList):
