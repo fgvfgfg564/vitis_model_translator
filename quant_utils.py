@@ -1,11 +1,16 @@
+"""
+This file should not be accessed under RUNNER MODE.
+"""
+
+import tensorflow as tf
 from unittest import result
 from tensorflow_model_optimization.quantization.keras import vitis_quantize
 import numpy as np
-import tensorflow as tf
 
 
 def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=False):
-    quantizer = vitis_quantize.VitisQuantizer(model, quantize_strategy="8bit_tqt")
+    quantizer = vitis_quantize.VitisQuantizer(
+        model, quantize_strategy="8bit_tqt")
     if not init_quant:
         qat_model = quantizer.get_qat_model(init_quant=False)
     else:
