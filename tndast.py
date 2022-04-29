@@ -9,8 +9,22 @@ except ModuleNotFoundError:
     RUNNERMODE = True
     print("Tensorflow not detected. The translator is now in RUNNER MODE.")
 
+if RUNNERMODE:
+    from runner import FixPosArray, Runner
 
-class Program:
+
+class ASTNodeBase:
+    def proc(self, translator):
+        raise NotImplementedError
+
+    def run(self, superRunner):
+        raise NotImplementedError
+
+    def crossPlatformProcess(self, engine):
+        raise NotImplementedError
+
+
+class Program(ASTNodeBase):
     def __init__(self, expr):
         self.exprs = [expr]
 
@@ -29,7 +43,7 @@ class Program:
             each.run(superRunner)
 
 
-class VarDefinition:
+class VarDefinition(ASTNodeBase):
     def __init__(self, type, varList):
         self.type = type
         self.varList = varList
@@ -65,8 +79,19 @@ class VarDefinition:
             for each in self.varList:
                 translator.varList.setdefault(each, None)
 
+    def run(self, superRunner):
+        for each in self.varList:
+            superRunner.varList.setdefault(each, None)
+        if self.type == "input":
+            superRunner.inputs = self.varList
+            if isinstance(superRunner.feeds, dict):
+                for k, v in superRunner.feeds.items():
+                    superRunner.varList[k] = FixPosArray(v)
+        if self.type == "output":
+            superRunner.outputs = self.varList
 
-class ModuleDefinition:
+
+class ModuleDefinition(ASTNodeBase):
     def __init__(self, name, n_in, n_out):
         self.name = name
         self.n_in = n_in
@@ -76,8 +101,13 @@ class ModuleDefinition:
         translator.checkModuleNotDefined(self.name)
         translator.moduleDefs.setdefault(self.name, (self.n_in, self.n_out))
 
+    def run(self, superRunner):
+        module_filename = self.name + ".xmodel"
+        runner = Runner(module_filename)
+        superRunner.modules.setdefault(self.name, runner)
 
-class Calib:
+
+class Calib(ASTNodeBase):
     def __init__(self, name, varlist) -> None:
         self.name = name
         self.varlist = varlist
@@ -98,8 +128,11 @@ class Calib:
         )
         translator.model.__setattr__(self.name, quant_module)
 
+    def run(self, superRunner):
+        pass
 
-class Assign:
+
+class Assign(ASTNodeBase):
     def __init__(self, target, function, source) -> None:
         self.target = target
         self.function = function
@@ -132,20 +165,31 @@ class Assign:
                     a = translator.varList[each]
                     translator.varList[each] = np.concatenate((a, val), axis=0)
 
+    def run(self, superRunner):
+        inputs = [superRunner.varList[name] for name in self.source]
+        outputs = superRunner.modules[self.function].execute(inputs)
+        for k, v in zip(self.target, outputs):
+            superRunner.varList[k] = v
 
-class Split:
+
+class Split(ASTNodeBase):
     def __init__(self, target, source):
         self.target = target
         self.source = source
+
+    def crossPlatformProcess(self, engine):
+        num_splits = len(self.target)
+        splits = np.split(engine.varList.get(self.source), num_splits, axis=3)
+
+        for i, each in enumerate(self.target):
+            engine.varList.set(each, splits[i])
 
     def proc(self, translator):
         translator.checkVarNameDefined(self.source)
         for each in self.target:
             translator.checkVarNameDefined(each)
 
-        num_splits = len(self.target)
-        splits = np.split(translator.varList.get(
-            self.source), num_splits, axis=3)
+        self.crossPlatformProcess(translator)
 
-        for i, each in enumerate(self.target):
-            translator.varList.set(each, splits[i])
+    def run(self, superRunner):
+        self.crossPlatformProcess(superRunner)

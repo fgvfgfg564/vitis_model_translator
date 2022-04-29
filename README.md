@@ -37,7 +37,7 @@ If "calib" is set to None during translating, in this operation, translator simp
 This operation splits variable `x` into k patches on default dimension `3` and assign them to variable `y1`, `y2`, ..., `yk`.
 
 ### y1, y2, ... = m(x1, x2, ...);
-Defines a data flow: variable ys are the results of applying module m on variable xs.
+Defines a data flow: variable `y`s are the results of applying module `m` on variable `x`s.
 
 
 ## Comments
