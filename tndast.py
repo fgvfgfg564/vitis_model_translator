@@ -2,14 +2,11 @@ import os
 import numpy as np
 from logging import INFO, log
 from tqdm import tqdm
-
-from .translator_utils import deploy_qat_model
-
 RUNNERMODE = False
 
 try:
     import tensorflow as tf
-    from .translator_utils import dataset2np, get_quantized_model
+    from .translator_utils import dataset2np, get_quantized_model, deploy_qat_model
 except ModuleNotFoundError:
     RUNNERMODE = True
 
@@ -76,7 +73,8 @@ class VarDefinition(ASTNodeBase):
                     )
                 input_dataset = translator.calib_dataset
                 if isinstance(input_dataset, tf.data.Dataset):
-                    input_dataset = dataset2np(input_dataset, len(self.varList))
+                    input_dataset = dataset2np(
+                        input_dataset, len(self.varList))
                 for i, each in enumerate(self.varList):
                     translator.varList.setdefault(each, input_dataset[i])
             else:
@@ -161,7 +159,8 @@ class Calib(ASTNodeBase):
             input_shape_str = ",".join([str(x) for x in input_shape])
             input_spec_str = f'"{module.inputs[i].name}": "{input_shape_str}"'
             input_spec_strs.append(input_spec_str)
-        input_shape_option = '"input_shape": {%s}' % (", ".join(input_spec_strs))
+        input_shape_option = '"input_shape": {%s}' % (
+            ", ".join(input_spec_strs))
         option = "--options '{%s}'" % input_shape_option
         output_dir = deployer.output_dir
         deploy_qat_model(module, os.path.join(output_dir, self.name + ".h5"))
