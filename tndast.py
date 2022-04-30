@@ -1,5 +1,10 @@
+import os
 import numpy as np
 from logging import INFO, log
+from tqdm import tqdm
+
+from vitis_model_translator.quant_utils import deploy_qat_model
+
 RUNNERMODE = False
 
 try:
@@ -21,6 +26,9 @@ class ASTNodeBase:
 
     def crossPlatformProcess(self, engine):
         raise NotImplementedError
+    
+    def deploy(self, compiler):
+        pass
 
 
 class Program(ASTNodeBase):
@@ -33,13 +41,18 @@ class Program(ASTNodeBase):
     def proc(self, translator):
         if RUNNERMODE:
             raise NotImplementedError(
-                "Quantize operations are unavailable in RUNNER MODE!")
+                "Quantize operations are unavailable in RUNNER MODE!"
+            )
         for each in self.exprs:
             each.proc(translator)
 
     def run(self, runner):
         for each in self.exprs:
             each.run(runner)
+    
+    def deploy(self, compiler):
+        for each in self.exprs:
+            each.deploy(compiler)
 
 
 class VarDefinition(ASTNodeBase):
@@ -63,8 +76,7 @@ class VarDefinition(ASTNodeBase):
                     )
                 input_dataset = translator.calib_dataset
                 if isinstance(input_dataset, tf.data.Dataset):
-                    input_dataset = dataset2np(
-                        input_dataset, len(self.varList))
+                    input_dataset = dataset2np(input_dataset, len(self.varList))
                 for i, each in enumerate(self.varList):
                     translator.varList.setdefault(each, input_dataset[i])
             else:
@@ -107,6 +119,11 @@ class ModuleDefinition(ASTNodeBase):
         module_runner = ModuleRunner(module_filename)
         print(f"runner created from file: {module_filename}")
         runner.modules.setdefault(self.name, module_runner)
+    
+    def deploy(self, compiler):
+        module = compiler.model.__getattribute__(self.name)
+        output_dir = compiler.output_dir
+        deploy_qat_model(module, os.path.join(output_dir, self.name+".h5"))
 
 
 class Calib(ASTNodeBase):
@@ -157,15 +174,16 @@ class Assign(ASTNodeBase):
         input_dataset = translator.makeDataset(self.source, use_tf=True)
         for each in self.target:
             translator.varList[each] = None
-        for x in input_dataset:
+        results = dict()
+        for x in tqdm(input_dataset):
             y = module(x)
             for i, each in enumerate(self.target):
                 val = (y[i] if len(self.target) > 1 else y).numpy()
-                if translator.varList[each] is None:
-                    translator.varList[each] = val
-                else:
-                    a = translator.varList[each]
-                    translator.varList[each] = np.concatenate((a, val), axis=0)
+                results.setdefault(each, [])
+                results[each].append(val)
+
+        for i, each in enumerate(self.target):
+            translator.varList[each] = np.concatenate(results[each], axis=0)
 
     def run(self, runner):
         inputs = [runner.varList[name] for name in self.source]

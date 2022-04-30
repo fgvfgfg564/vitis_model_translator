@@ -21,6 +21,9 @@ def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=
         )
     return qat_model
 
+def deploy_qat_model(model, output_file):
+    quantized_model = vitis_quantize.VitisQuantizer.get_deploy_model(model)
+    quantized_model.save(output_file)
 
 def dataset2np(dataset: tf.data.Dataset, num_items):
     if num_items == 1:
