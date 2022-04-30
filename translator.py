@@ -43,7 +43,8 @@ class Translator:
         self.checkModuleDefined(module)
         required = self.moduleDefs[module][0]
         if required != n_in:
-            raise ValueError(f"Module {module} requires {required} inputs. Got {n_in}.")
+            raise ValueError(
+                f"Module {module} requires {required} inputs. Got {n_in}.")
 
     def checkModuleOutput(self, module, n_out):
         self.checkModuleDefined(module)

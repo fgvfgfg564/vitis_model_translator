@@ -63,8 +63,23 @@ t1 = h_a(t0);
 calib h_s(t1);
 ```
 
-# Inputs on translator
+# Vitis model translator
 ### calib_dataset
 `tf.data.Dataset` or a tuple consisting numpy arrays with the same dimension 0 corresponding to the defined 'input' variables. The suggested dataset length is between 100 and 1000.
 
 Sometimes an oversized calibration dataset causes memory overflow. Consider decreasing the dataset size to solve this problem.
+
+```py
+from vitis_model_translator import translator
+
+translator = Translator("<name>.tnd")
+
+# Prepare float model and calib dataset
+
+translator.translate(model, calib_dataset, calib_steps, init_quant)
+
+# now model is QAT-applicable 
+# execute training process on model for better performance
+
+
+```
