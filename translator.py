@@ -79,3 +79,15 @@ class Translator:
             ds = tf.data.Dataset.from_tensor_slices(ds)
             ds = ds.batch(1)
         return ds
+
+class Compiler:
+    def __init__(self, config_filename):
+        with open(config_filename, "r") as f:
+            self.prog = f.read()
+        self.ast = yacc.parse(self.prog)
+    
+    def compile(self, model, arch_file, output_dir):
+        self.model = model
+        self.arch_file = arch_file
+        self.output_dir = output_dir
+        return self.ast.compile(self)

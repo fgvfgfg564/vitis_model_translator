@@ -1,6 +1,9 @@
+from os import system
 import numpy as np
 from logging import INFO, log
 from tqdm import tqdm
+
+from vitis_model_translator.quant_utils import deploy_qat_model
 
 RUNNERMODE = False
 
@@ -23,6 +26,9 @@ class ASTNodeBase:
 
     def crossPlatformProcess(self, engine):
         raise NotImplementedError
+    
+    def compile(self, compiler):
+        pass
 
 
 class Program(ASTNodeBase):
@@ -43,6 +49,10 @@ class Program(ASTNodeBase):
     def run(self, runner):
         for each in self.exprs:
             each.run(runner)
+    
+    def compile(self, compiler):
+        for each in self.exprs:
+            each.compile(compiler)
 
 
 class VarDefinition(ASTNodeBase):
@@ -109,6 +119,15 @@ class ModuleDefinition(ASTNodeBase):
         module_runner = ModuleRunner(module_filename)
         print(f"runner created from file: {module_filename}")
         runner.modules.setdefault(self.name, module_runner)
+    
+    def compile(self, compiler):
+        arch_file = compiler.arch_file
+        module = compiler.model.__getattribute__(self.name)
+        output_dir = compiler.output_dir
+        temp_filename = "/tmp/tmp_vitis_model.h5"
+        deploy_qat_model(module, temp_filename)
+        cmd = f"vai_c_tensorflow2 -m {temp_filename} -n {self.name} -a {arch_file} -o {output_dir}"
+        system(cmd)
 
 
 class Calib(ASTNodeBase):
