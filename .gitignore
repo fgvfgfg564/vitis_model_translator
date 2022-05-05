@@ -1,5 +1,6 @@
 __pycache__/
 *.out
+*.pyc
 parsetab.py
 resnet50.py
 *.xmodel
