@@ -1,5 +1,5 @@
 try:
-    from .translator import Translator
+    from .translator import Translator, Deployer
     print("Translator mode activated.")
 except ModuleNotFoundError:
     pass
