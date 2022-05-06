@@ -3,13 +3,13 @@ import numpy as np
 from logging import INFO, log
 from tqdm import tqdm
 
-from vitis_model_translator.quant_utils import deploy_qat_model
+from .translator_utils import deploy_qat_model
 
 RUNNERMODE = False
 
 try:
     import tensorflow as tf
-    from .quant_utils import dataset2np, get_quantized_model
+    from .translator_utils import dataset2np, get_quantized_model
 except ModuleNotFoundError:
     RUNNERMODE = True
 
@@ -26,8 +26,8 @@ class ASTNodeBase:
 
     def crossPlatformProcess(self, engine):
         raise NotImplementedError
-    
-    def deploy(self, compiler):
+
+    def deploy(self, deployer):
         pass
 
 
@@ -49,10 +49,10 @@ class Program(ASTNodeBase):
     def run(self, runner):
         for each in self.exprs:
             each.run(runner)
-    
-    def deploy(self, compiler):
+
+    def deploy(self, deployer):
         for each in self.exprs:
-            each.deploy(compiler)
+            each.deploy(deployer)
 
 
 class VarDefinition(ASTNodeBase):
@@ -90,6 +90,14 @@ class VarDefinition(ASTNodeBase):
             for each in self.varList:
                 translator.varList.setdefault(each, None)
 
+    def deploy(self, deployer):
+        if self.type == "input":
+            for i, each in enumerate(self.varList):
+                deployer.varShapes.setdefault(each, deployer.input_shape[i])
+        else:
+            for i, each in enumerate(self.varList):
+                deployer.varShapes.setdefault(each, None)
+
     def run(self, runner):
         for each in self.varList:
             runner.varList.setdefault(each, None)
@@ -119,11 +127,6 @@ class ModuleDefinition(ASTNodeBase):
         module_runner = ModuleRunner(module_filename)
         print(f"runner created from file: {module_filename}")
         runner.modules.setdefault(self.name, module_runner)
-    
-    def deploy(self, compiler):
-        module = compiler.model.__getattribute__(self.name)
-        output_dir = compiler.output_dir
-        deploy_qat_model(module, os.path.join(output_dir, self.name+".h5"))
 
 
 class Calib(ASTNodeBase):
@@ -149,6 +152,21 @@ class Calib(ASTNodeBase):
 
     def run(self, runner):
         pass
+
+    def deploy(self, deployer):
+        module = deployer.model.__getattribute__(self.name)
+        input_spec_strs = []
+        for i, each in enumerate(self.varlist):
+            input_shape = deployer.varShapes[each]
+            input_shape_str = ",".join([str(x) for x in input_shape])
+            input_spec_str = f'"{module.inputs[i].name}": "{input_shape_str}"'
+            input_spec_strs.append(input_spec_str)
+        input_shape_option = '"input_shape": {%s}' % (", ".join(input_spec_strs))
+        option = "--options '{%s}'" % input_shape_option
+        output_dir = deployer.output_dir
+        deploy_qat_model(module, os.path.join(output_dir, self.name + ".h5"))
+        with open(os.path.join(output_dir, self.name + ".opt"), "w") as f:
+            print(option, file=f)
 
 
 class Assign(ASTNodeBase):
@@ -181,7 +199,6 @@ class Assign(ASTNodeBase):
                 val = (y[i] if len(self.target) > 1 else y).numpy()
                 results.setdefault(each, [])
                 results[each].append(val)
-
         for i, each in enumerate(self.target):
             translator.varList[each] = np.concatenate(results[each], axis=0)
 
@@ -190,6 +207,15 @@ class Assign(ASTNodeBase):
         outputs = runner.modules[self.function].execute(inputs)
         for k, v in zip(self.target, outputs):
             runner.varList[k] = v
+
+    def deploy(self, deployer):
+        module = deployer.model.__getattribute__(self.function)
+        inputs = tuple([np.zeros(deployer.varShapes[x]) for x in self.source])
+        outputs = module(inputs)
+        if len(self.target) == 1:
+            outputs = [outputs]
+        for i, each in enumerate(self.target):
+            deployer.varShapes[each] = outputs[i].shape
 
 
 class Split(ASTNodeBase):
@@ -213,3 +239,12 @@ class Split(ASTNodeBase):
 
     def run(self, runner):
         self.crossPlatformProcess(runner)
+
+    def deploy(self, deployer):
+        inputs = np.zeros(deployer.varShapes[self.source])
+        num_splits = len(self.target)
+        splits = np.split(inputs, num_splits, axis=3)
+        if len(self.target) == 1:
+            outputs = [outputs]
+        for i, each in enumerate(self.target):
+            deployer.varShapes[each] = outputs[i].shape

@@ -4,12 +4,14 @@ import tensorflow as tf
 import numpy as np
 
 
-class Translator:
+class ASTFunctionBase:
     def __init__(self, config_filename):
         with open(config_filename, "r") as f:
             self.prog = f.read()
         self.ast = yacc.parse(self.prog)
 
+
+class Translator(ASTFunctionBase):
     def translate(self, model, calib_dataset=None, calib_steps=None, init_quant=False):
         self.reset()
         self.model = model
@@ -56,8 +58,7 @@ class Translator:
         self.checkModuleDefined(module)
         required = self.moduleDefs[module][0]
         if required != n_in:
-            raise ValueError(
-                f"Module {module} requires {required} inputs. Got {n_in}.")
+            raise ValueError(f"Module {module} requires {required} inputs. Got {n_in}.")
 
     def checkModuleOutput(self, module, n_out):
         self.checkModuleDefined(module)
@@ -81,13 +82,14 @@ class Translator:
             ds = ds.batch(1)
         return ds
 
-class Deployer:
-    def __init__(self, config_filename):
-        with open(config_filename, "r") as f:
-            self.prog = f.read()
-        self.ast = yacc.parse(self.prog)
-    
-    def deploy(self, model, output_dir):
+
+class Deployer(ASTFunctionBase):
+    def reset(self):
+        self.varShapes = dict()
+
+    def deploy(self, model, output_dir, input_shape):
+        self.reset()
         self.model = model
         self.output_dir = output_dir
+        self.input_shape = input_shape
         return self.ast.deploy(self)

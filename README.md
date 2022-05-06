@@ -64,6 +64,7 @@ calib h_s(t1);
 ```
 
 # Vitis model translator
+## Translate
 ### calib_dataset
 `tf.data.Dataset` or a tuple consisting numpy arrays with the same dimension 0 corresponding to the defined 'input' variables. The suggested dataset length is between 100 and 1000.
 
@@ -83,3 +84,15 @@ translator.translate(model, calib_dataset, calib_steps, init_quant)
 
 
 ```
+
+## Deploy
+Generates several `.h5` files corresponding with each module.
+```py
+# prepare QAT model
+
+deployer = Deployer("<name>.tnd")
+deployer.deploy(qat_model, output_dir)
+```
+
+## Compile
+Generates `.xmodel` files from .h5 model files.
