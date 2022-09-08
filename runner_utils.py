@@ -65,6 +65,7 @@ class ModuleRunner:
         self.outputTensors = self.runner.get_output_tensors()
         self.n_in = len(self.inputTensors)
         self.n_out = len(self.outputTensors)
+        print(self.inputTensors[0].dims, self.outputTensors[0].dims)
 
         self.outputBuffer = list(
             [np.empty(tuple(x.dims), dtype=np.int8, order="C") for x in self.outputTensors])
@@ -74,10 +75,10 @@ class ModuleRunner:
             if tuple(each.shape) != tuple(self.inputTensors[i].dims):
                 raise ValueError(
                     f"Shapes mismatch: {tuple(each.shape)}(received) vs. {tuple(self.inputTensors[i].dims)}(expected)")
-            print(each.shape, tuple(self.inputTensors[i].dims))
             each.changeFixPoint(self.getInputFixPos(i))
         input_arrays = list([x.array for x in inputs])
-        job_id = self.runner.execute_async(input_arrays, self.outputBuffer)
+        job_id = self.runner.execute_async(
+            input_arrays, self.outputBuffer, enable_dynamic_array=True)
         self.runner.wait(job_id)
 
     def getInputFixPos(self, idx):

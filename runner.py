@@ -6,6 +6,7 @@ class Runner:
         with open(config_filename, "r") as f:
             self.prog = f.read()
         self.ast = yacc.parse(self.prog)
+        self.reset()
 
     def reset(self):
         self.varList = dict()
@@ -15,7 +16,6 @@ class Runner:
         self.outputs = None
 
     def run(self, inputs):
-        self.reset()
         self.feeds = inputs
         self.ast.run(self)
 
@@ -26,5 +26,8 @@ class Runner:
         else:
             result = []
             for each in self.outputs:
-                result.append(self.varList[each].value)
+                if self.varList[each] is not None:
+                    result.append(self.varList[each].value)
+                else:
+                    result.append(None)
         return result

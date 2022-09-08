@@ -121,6 +121,8 @@ class ModuleDefinition(ASTNodeBase):
         translator.moduleDefs.setdefault(self.name, (self.n_in, self.n_out))
 
     def run(self, runner):
+        if self.name in runner.modules:
+            return
         module_filename = self.name + ".xmodel"
         module_runner = ModuleRunner(module_filename)
         print(f"runner created from file: {module_filename}")
