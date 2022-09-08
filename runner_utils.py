@@ -77,13 +77,7 @@ class ModuleRunner:
         for i, each in enumerate(inputs):
             if tuple(each.shape) != tuple(self.inputTensors[i].dims):
                 raise ValueError(
-<<<<<<< HEAD
                     f"Shapes mismatch: {tuple(each.shape)}(received) vs. {tuple(self.inputTensors[i].dims)}(expected)")
-=======
-                    f"Shapes mismatch: {tuple(each.shape)}(received) vs. {tuple(self.inputTensors[i].dims)}(expected)"
-                )
-            print(each.shape, tuple(self.inputTensors[i].dims))
->>>>>>> b660f19ad864b32126b0ba465ed4e16d20bfa676
             each.changeFixPoint(self.getInputFixPos(i))
         input_arrays = list([x.array for x in inputs])
         job_id = self.runner.execute_async(
