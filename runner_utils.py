@@ -32,23 +32,22 @@ class FixPosArray:
     def changeFixPoint(self, newfixpoint: int):
         if self.fixpoint == None:
             # Now self.array is in float-point format
-            self.array = np.clip(
-                (self.array * (2 ** newfixpoint)), -128, 127).astype(np.int8)
+            self.array = np.clip((self.array * (2**newfixpoint)), -128, 127).astype(
+                np.int8
+            )
         else:
             # Now just change the fix point value
             if newfixpoint == self.fixpoint:
                 return
             if self.fixpoint < newfixpoint:
-                self.array = np.left_shift(
-                    self.array, newfixpoint - self.fixpoint)
+                self.array = np.left_shift(self.array, newfixpoint - self.fixpoint)
             else:
-                self.array = np.right_shift(
-                    self.array, self.fixpoint - newfixpoint)
+                self.array = np.right_shift(self.array, self.fixpoint - newfixpoint)
             self.fixpoint = newfixpoint
 
     @property
     def value(self):
-        return self.array.astype(np.float64) / (2 ** self.fixpoint)
+        return self.array.astype(np.float64) / (2**self.fixpoint)
 
     @property
     def shape(self):
@@ -68,13 +67,23 @@ class ModuleRunner:
         print(self.inputTensors[0].dims, self.outputTensors[0].dims)
 
         self.outputBuffer = list(
-            [np.empty(tuple(x.dims), dtype=np.int8, order="C") for x in self.outputTensors])
+            [
+                np.empty(tuple(x.dims), dtype=np.int8, order="C")
+                for x in self.outputTensors
+            ]
+        )
 
     def run(self, inputs):
         for i, each in enumerate(inputs):
             if tuple(each.shape) != tuple(self.inputTensors[i].dims):
                 raise ValueError(
+<<<<<<< HEAD
                     f"Shapes mismatch: {tuple(each.shape)}(received) vs. {tuple(self.inputTensors[i].dims)}(expected)")
+=======
+                    f"Shapes mismatch: {tuple(each.shape)}(received) vs. {tuple(self.inputTensors[i].dims)}(expected)"
+                )
+            print(each.shape, tuple(self.inputTensors[i].dims))
+>>>>>>> b660f19ad864b32126b0ba465ed4e16d20bfa676
             each.changeFixPoint(self.getInputFixPos(i))
         input_arrays = list([x.array for x in inputs])
         job_id = self.runner.execute_async(
@@ -92,7 +101,12 @@ class ModuleRunner:
 
     @property
     def outputs(self):
-        return list([FixPosArray(self.outputBuffer[i], self.getOutputFixPos(i)) for i in range(self.n_out)])
+        return list(
+            [
+                FixPosArray(self.outputBuffer[i], self.getOutputFixPos(i))
+                for i in range(self.n_out)
+            ]
+        )
 
     def execute(self, inputs):
         self.run(inputs)
