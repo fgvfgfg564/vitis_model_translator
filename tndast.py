@@ -234,6 +234,8 @@ class Split(ASTNodeBase):
         translator.checkVarNameDefined(self.source)
         for each in self.target:
             translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
 
         self.crossPlatformProcess(translator)
 
@@ -258,21 +260,34 @@ class Pyexpr(ASTNodeBase):
         f = eval(f'lambda {varliststr}: {self.expr}')
         return f
     
-    def crossPlatformProcess(self, engine):
+    # If deploy mode, use all-zero tensor and store the shape
+    # otherwise, calculate the tensor
+    def crossPlatformProcess(self, engine, deploy_mode=False):
         f = self.createfunc()
         feed_dict = dict()
         for each in self.varlist:
-            feed_dict.setdefault(each, engine.varList.get(each))
+            if deploy_mode:
+                feed_dict.setdefault(each, np.zeros(engine.varShapes[each]))
+            else:
+                feed_dict.setdefault(each, engine.varList.get(each))
         result = f(**feed_dict)
 
+        if len(self.target) == 1:
+            result = [result]
+        
         for var, value in zip(self.target, result):
-            engine.varList.set(var, value)
+            if deploy_mode:
+                engine.varShapes[var] = value.shape
+            else:
+                engine.varList.set(var, value)
 
     def proc(self, translator):
         for each in self.varlist:
             translator.checkVarNameDefined(each)
         for each in self.target:
             translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
 
         self.crossPlatformProcess(translator)
 
@@ -280,11 +295,4 @@ class Pyexpr(ASTNodeBase):
         self.crossPlatformProcess(runner)
 
     def deploy(self, deployer):
-        f = self.createfunc()
-        feed_dict = dict()
-        for each in self.varlist:
-            feed_dict.setdefault(each, np.zeros(deployer.varShapes[each]))
-        result = f(**feed_dict)
-
-        for var, value in zip(self.target, result):
-            deployer.varShapes[var] = value.shape
+        self.crossPlatformProcess(deployer, True)
