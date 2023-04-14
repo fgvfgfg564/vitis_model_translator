@@ -234,6 +234,8 @@ class Split(ASTNodeBase):
         translator.checkVarNameDefined(self.source)
         for each in self.target:
             translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
 
         self.crossPlatformProcess(translator)
 
@@ -273,6 +275,8 @@ class Pyexpr(ASTNodeBase):
             translator.checkVarNameDefined(each)
         for each in self.target:
             translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
 
         self.crossPlatformProcess(translator)
 
