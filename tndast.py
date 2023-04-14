@@ -255,7 +255,7 @@ class Pyexpr(ASTNodeBase):
     
     def createfunc(self):
         varliststr = ",".join(self.varlist)
-        f = exec(f'lambda {varliststr}: {self.expr}')
+        f = eval(f'lambda {varliststr}: {self.expr}')
         return f
     
     def crossPlatformProcess(self, engine):

@@ -38,6 +38,7 @@ def t_newline(t):
 def t_STR(t):
     r'"[^\n"]+"'
     t.value = t.value[1:-1]
+    return t
 
 def t_ID(t):
     r"[A-Za-z_]+\w*"
