@@ -244,7 +244,47 @@ class Split(ASTNodeBase):
         inputs = np.zeros(deployer.varShapes[self.source])
         num_splits = len(self.target)
         splits = np.split(inputs, num_splits, axis=3)
-        if len(self.target) == 1:
-            outputs = [outputs]
         for i, each in enumerate(self.target):
-            deployer.varShapes[each] = outputs[i].shape
+            deployer.varShapes[each] = splits[i].shape
+
+class Pyexpr(ASTNodeBase):
+    def __init__(self, target, varlist, expr) -> None:
+        self.target = target
+        self.varlist = varlist
+        self.expr = expr
+    
+    def createfunc(self):
+        varliststr = ",".join(self.varlist)
+        f = exec(f'lambda {varliststr}: {self.expr}')
+        return f
+    
+    def crossPlatformProcess(self, engine):
+        f = self.createfunc()
+        feed_dict = dict()
+        for each in self.varlist:
+            feed_dict.setdefault(each, engine.varList.get(each))
+        result = f(**feed_dict)
+
+        for var, value in zip(self.target, result):
+            engine.varList.set(var, value)
+
+    def proc(self, translator):
+        for each in self.varlist:
+            translator.checkVarNameDefined(each)
+        for each in self.target:
+            translator.checkVarNameDefined(each)
+
+        self.crossPlatformProcess(translator)
+
+    def run(self, runner):
+        self.crossPlatformProcess(runner)
+
+    def deploy(self, deployer):
+        f = self.createfunc()
+        feed_dict = dict()
+        for each in self.varlist:
+            feed_dict.setdefault(each, np.zeros(deployer.varShapes[each]))
+        result = f(**feed_dict)
+
+        for var, value in zip(self.target, result):
+            deployer.varShapes[var] = value.shape

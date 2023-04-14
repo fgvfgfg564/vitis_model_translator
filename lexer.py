@@ -12,9 +12,10 @@ reserved = {
     "module": "MODULE",
     "calib": "CALIB",
     "split": "SPLIT",
+    "pyexpr": "PYEXPR", 
 }
 
-tokens = ["ID", "COMMA", "LPAREN", "RPAREN", "ASSIGN", "SEMICO", "NUMBER"] + list(
+tokens = ["ID", "COMMA", "LPAREN", "RPAREN", "ASSIGN", "SEMICO", "NUMBER", "STR"] + list(
     reserved.values()
 )
 
@@ -33,6 +34,10 @@ def t_newline(t):
     r"\n+"
     t.lexer.lineno += len(t.value)
 
+
+def t_STR(t):
+    r'"[^\n"]+"'
+    t.value = t.value[1:-1]
 
 def t_ID(t):
     r"[A-Za-z_]+\w*"

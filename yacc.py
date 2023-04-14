@@ -32,9 +32,13 @@ def p_expr_calib(p):
     p[0] = Calib(p[2], p[4])
 
 
-def p_expr_oper(p):
+def p_expr_split(p):
     "expr : varlist ASSIGN SPLIT LPAREN ID RPAREN"
     p[0] = Split(p[1], p[5])
+
+def p_expr_pyexpr(p):
+    "expr : varlist ASSIGN PYEXPR LPAREN varlist COMMA STR RPAREN"
+    p[0] = Pyexpr(p[1], p[5], p[7])
 
 
 def p_expr_assign(p):
