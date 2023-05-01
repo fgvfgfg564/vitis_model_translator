@@ -18,6 +18,12 @@ def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=
             calib_dataset=calib_dataset,
             calib_steps=calib_steps,
         )
+    # min and max attributes are useless in TQT algorithm; disable them
+    for each in qat_model.weights:
+        if "__min:" in each.name:
+            each.assign(each * 0.0 - 1e100)
+        if "__max:" in each.name:
+            each.assign(each * 0.0 + 1e100)
     return qat_model
 
 
