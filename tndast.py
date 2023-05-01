@@ -234,6 +234,8 @@ class Split(ASTNodeBase):
         translator.checkVarNameDefined(self.source)
         for each in self.target:
             translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
 
         self.crossPlatformProcess(translator)
 
@@ -244,7 +246,53 @@ class Split(ASTNodeBase):
         inputs = np.zeros(deployer.varShapes[self.source])
         num_splits = len(self.target)
         splits = np.split(inputs, num_splits, axis=3)
-        if len(self.target) == 1:
-            outputs = [outputs]
         for i, each in enumerate(self.target):
-            deployer.varShapes[each] = outputs[i].shape
+            deployer.varShapes[each] = splits[i].shape
+
+class Pyexpr(ASTNodeBase):
+    def __init__(self, target, varlist, expr) -> None:
+        self.target = target
+        self.varlist = varlist
+        self.expr = expr
+    
+    def createfunc(self):
+        varliststr = ",".join(self.varlist)
+        f = eval(f'lambda {varliststr}: {self.expr}')
+        return f
+    
+    # If deploy mode, use all-zero tensor and store the shape
+    # otherwise, calculate the tensor
+    def crossPlatformProcess(self, engine, deploy_mode=False):
+        f = self.createfunc()
+        feed_dict = dict()
+        for each in self.varlist:
+            if deploy_mode:
+                feed_dict.setdefault(each, np.zeros(engine.varShapes[each]))
+            else:
+                feed_dict.setdefault(each, engine.varList.get(each))
+        result = f(**feed_dict)
+
+        if len(self.target) == 1:
+            result = [result]
+        
+        for var, value in zip(self.target, result):
+            if deploy_mode:
+                engine.varShapes[var] = value.shape
+            else:
+                engine.varList.set(var, value)
+
+    def proc(self, translator):
+        for each in self.varlist:
+            translator.checkVarNameDefined(each)
+        for each in self.target:
+            translator.checkVarNameDefined(each)
+        if not translator.init_quant:
+            return
+
+        self.crossPlatformProcess(translator)
+
+    def run(self, runner):
+        self.crossPlatformProcess(runner)
+
+    def deploy(self, deployer):
+        self.crossPlatformProcess(deployer, True)
