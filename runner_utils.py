@@ -1,7 +1,10 @@
 from ctypes import *
 from typing import List
 import numpy as np
-import vart
+try:
+    import vart
+except ImportError as e:
+    pass
 import xir
 
 
