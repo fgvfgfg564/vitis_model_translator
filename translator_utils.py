@@ -7,24 +7,29 @@ from unittest import result
 from tensorflow_model_optimization.quantization.keras import vitis_quantize
 import numpy as np
 
+from .quantization.functional_model import quantize_model
 
-def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=False):
-    quantizer = vitis_quantize.VitisQuantizer(model, quantize_strategy="8bit_tqt")
-    if not init_quant:
-        qat_model = quantizer.get_qat_model(init_quant=False)
+
+def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=False, use_default=False):
+    if init_quant == False or use_default:
+        quantizer = vitis_quantize.VitisQuantizer(model, quantize_strategy="8bit_tqt")
+        if not init_quant:
+            qat_model = quantizer.get_qat_model(init_quant=False)
+        else:
+            qat_model = quantizer.get_qat_model(
+                init_quant=True,
+                calib_dataset=calib_dataset,
+                calib_steps=calib_steps,
+            )
+        # min and max attributes are useless in TQT algorithm; disable them
+        for each in qat_model.weights:
+            if "_min:" in each.name:
+                each.assign(each * 0.0 - 1e100)
+            if "_max:" in each.name:
+                each.assign(each * 0.0 + 1e100)
+        return qat_model
     else:
-        qat_model = quantizer.get_qat_model(
-            init_quant=True,
-            calib_dataset=calib_dataset,
-            calib_steps=calib_steps,
-        )
-    # min and max attributes are useless in TQT algorithm; disable them
-    for each in qat_model.weights:
-        if "__min:" in each.name:
-            each.assign(each * 0.0 - 1e100)
-        if "__max:" in each.name:
-            each.assign(each * 0.0 + 1e100)
-    return qat_model
+        return quantize_model(model, calib_dataset, calib_steps)
 
 
 def deploy_qat_model(model, output_file):
