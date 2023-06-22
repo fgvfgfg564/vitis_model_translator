@@ -67,7 +67,6 @@ class ModuleRunner:
         self.outputTensors = self.runner.get_output_tensors()
         self.n_in = len(self.inputTensors)
         self.n_out = len(self.outputTensors)
-        print(self.inputTensors[0].dims, self.outputTensors[0].dims)
 
         self.outputBuffer = list(
             [

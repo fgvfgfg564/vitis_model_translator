@@ -1,4 +1,3 @@
-from vitis_model_translator.translator_utils import get_quantized_model
 from tensorflow_model_optimization.quantization.keras import vitis_quantize
 import tensorflow as tf
 import numpy as np
@@ -6,6 +5,7 @@ from tensorflow import keras
 from keras.layers import *
 from .utils import *
 from copy import deepcopy
+import logging
 
 # ----- Set weights for layer & activations -----
 
@@ -39,7 +39,7 @@ def set_log_ths_for_convolution(q_conv, new_weight_log_th, new_bias_log_th, new_
         raise ValueError(
             "Layer includes post activation quant. Please provide activation log_th")
     if not include_post_activation and new_activation_log_th is not None:
-        print("Warning: layer doesn't include post activation. The activation log_th is ignored.")
+        logging.warn("layer doesn't include post activation. The activation log_th is ignored.")
 
     if include_post_activation:
         minxa, maxxa = min_max_from_log_th(new_activation_log_th)

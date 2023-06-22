@@ -1,4 +1,5 @@
 import ply.lex as lex
+import logging
 
 __all__ = (
     "tokens",
@@ -53,7 +54,7 @@ def t_NUMBER(t):
 
 
 def t_error(t):
-    print("Illegal character '%s' at line %d" % (t.value[0], t.lexer.lineno))
+    logging.warn("Illegal character '%s' at line %d" % (t.value[0], t.lexer.lineno))
     t.lexer.skip(1)
 
 

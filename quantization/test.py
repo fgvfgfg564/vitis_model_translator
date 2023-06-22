@@ -19,14 +19,4 @@ print(model.losses)
 filter = lambda layer: isinstance(layer, Dense)
 model2 = insert_layer_nonseq(model, filter, lambda layer: Dense(30, name=layer.name+"extra"))
 
-# model2 = add_l2_w_a_loss(model, 0.001)
 model2.summary()
-# print(model2.losses)
-
-# model3 = remove_l2_reg_capture(model2)
-# model3.summary()
-
-# for layer in model.layers:
-#     weights = layer.trainable_weights
-#     for weight in weights:
-#         print(K.sum(weight))

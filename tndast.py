@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from logging import INFO, log
+import logging
 from tqdm import tqdm
 
 RUNNERMODE = False
@@ -125,7 +125,7 @@ class ModuleDefinition(ASTNodeBase):
             return
         module_filename = self.name + ".xmodel"
         module_runner = ModuleRunner(module_filename)
-        print(f"runner created from file: {module_filename}")
+        logging.info(f"runner created from file: {module_filename}")
         runner.modules.setdefault(self.name, module_runner)
 
 
@@ -141,7 +141,7 @@ class Calib(ASTNodeBase):
         if translator.init_quant:
             calib_dataset = translator.makeDataset(self.varlist)
 
-        print(f"Calibrating module '{self.name}'")
+        logging.info(f"Calibrating module '{self.name}'")
         quant_module = get_quantized_model(
             module,
             calib_dataset=calib_dataset,

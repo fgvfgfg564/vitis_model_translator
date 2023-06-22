@@ -1,5 +1,6 @@
 from queue import Queue
 from tensorflow import keras
+import logging
 
 def nodes_by_length(model):
     return model._nodes_by_length
@@ -72,13 +73,13 @@ def insert_layer_nonseq(model, condition, insert_layer_factory=None, position='a
             if position != 'delete':
                 new_layer = insert_layer_factory(layer)
                 x = new_layer(x)
-                print('New layer: {} Old layer: {} Type: {}'.format(new_layer.name,
+                logging.debug('New layer: {} Old layer: {} Type: {}'.format(new_layer.name,
                                                                 layer.name, position))
                 if position == 'before':
                     x = layer(x)
             else:
                 x = layer_input
-                print('Deleted layer: {}'.format(layer.name))
+                logging.debug('Deleted layer: {}'.format(layer.name))
         else:
             x = layer(layer_input)
         return x
