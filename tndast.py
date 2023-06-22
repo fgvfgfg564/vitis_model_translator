@@ -147,6 +147,7 @@ class Calib(ASTNodeBase):
             calib_dataset=calib_dataset,
             calib_steps=translator.calib_steps,
             init_quant=translator.init_quant,
+            use_default=translator.use_default,
         )
         translator.model.__setattr__(self.name, quant_module)
 

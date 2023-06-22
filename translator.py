@@ -12,7 +12,7 @@ class ASTFunctionBase:
 
 
 class Translator(ASTFunctionBase):
-    def translate(self, model, calib_dataset=None, calib_steps=None, init_quant=False):
+    def translate(self, model, calib_dataset=None, calib_steps=None, init_quant=False, use_default=False):
         self.reset()
         self.model = model
         if calib_dataset is None:
@@ -30,6 +30,7 @@ class Translator(ASTFunctionBase):
                 self.calib_dataset.append(each)
         self.calib_steps = calib_steps
         self.init_quant = init_quant
+        self.use_default = use_default
         self.ast.proc(self)
 
     def reset(self):
