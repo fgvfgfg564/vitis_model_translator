@@ -11,24 +11,32 @@ from vitis_model_translator.translator import Translator
 
 
 def filter_func(layer):
-    return isinstance(layer, (Conv2D, Conv2DTranspose, Dense))
+    return isinstance(layer, (Conv2D, Conv2DTranspose, Dense, Add, Multiply, Concatenate))
 
 def add_l2_w_a_loss(model, lmbda):
+    if not hasattr(model, 'layers'):
+        return
     for layer in model.layers:
         if filter_func(layer):
             l2 = tf.keras.regularizers.L2(lmbda)
             layer.add_loss(lambda layer=layer: l2(layer.kernel))
             layer.add_loss(lambda layer=layer: l2(layer.bias))
             layer.add_loss(lambda layer=layer: l2(layer.output))
+        else:
+            add_l2_w_a_loss(layer, lmbda)
     return model
 
 def remove_l2_w_a_loss(model, lmbda):
+    if not hasattr(model, 'layers'):
+        return
     for layer in model.layers:
         if filter_func(layer):
             l2 = tf.keras.regularizers.L2(lmbda)
             layer.add_loss(lambda layer=layer: -l2(layer.kernel))
             layer.add_loss(lambda layer=layer: -l2(layer.bias))
             layer.add_loss(lambda layer=layer: -l2(layer.output))
+        else:
+            add_l2_w_a_loss(layer, lmbda)
     return model
 
 class L2NormPreprocessCallback(Callback):
