@@ -75,9 +75,6 @@ def swap_axes(input_tensor, axis1, axis2):
     perm[axis1], perm[axis2] = perm[axis2], perm[axis1]
     return tf.transpose(input_tensor, perm=perm)
 
-# TODO: 改成tensorflow实现
-
-
 def tensor_range(x: tf.Tensor, channel_axis, scale_type='0.99'):
     if scale_type == '0.99':
         x = tf.abs(x)

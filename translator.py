@@ -32,6 +32,9 @@ class Translator(ASTFunctionBase):
         self.init_quant = init_quant
         self.use_default = use_default
         self.ast.proc(self)
+        tf.compat.v1.reset_default_graph()
+        tf.compat.v1.keras.backend.clear_session()
+        tf.keras.backend.clear_session()
 
     def reset(self):
         self.inputs = None

@@ -27,4 +27,5 @@ def remove_l2_w_a_loss(model, lmbda):
 
 def main(args, model, train_dataset, validation_dataset, losses, metrics, callbacks, norm_lmbda):
     add_l2_w_a_loss(model, lmbda=norm_lmbda)
+    # TODO: 实现preprocessing；calib dataset在过程中需要被引入；每个train epoch结束之后进行量化性能测试并保存最优的epoch
     # train(args, model, train_dataset, validation_dataset, )
