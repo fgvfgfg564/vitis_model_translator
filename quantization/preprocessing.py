@@ -10,34 +10,47 @@ from lib.jobs import *
 from vitis_model_translator.translator import Translator
 
 
-def filter_func(layer):
-    return isinstance(layer, (Conv2D, Conv2DTranspose, Dense, Add, Multiply, Concatenate))
+def filter_func1(layer):
+    return isinstance(layer, (Conv2D, Conv2DTranspose, Dense))
+
+
+def filter_func2(layer):
+    return isinstance(layer, (Add, Multiply, Concatenate))
+
+
+def safe_add_loss(layer, func):
+    try:
+        layer.add_loss(func)
+    except AttributeError:
+        pass
+
 
 def add_l2_w_a_loss(model, lmbda):
     if not hasattr(model, 'layers'):
         return
     for layer in model.layers:
-        if filter_func(layer):
+        if filter_func1(layer):
             l2 = tf.keras.regularizers.L2(lmbda)
-            layer.add_loss(lambda layer=layer: l2(layer.kernel))
-            layer.add_loss(lambda layer=layer: l2(layer.bias))
-            layer.add_loss(lambda layer=layer: l2(layer.output))
+            layer.kernel_regularizer = l2
+            layer.bias_regularizer = l2
+            layer.activity_regularizer = l2
         else:
             add_l2_w_a_loss(layer, lmbda)
     return model
+
 
 def remove_l2_w_a_loss(model, lmbda):
     if not hasattr(model, 'layers'):
         return
     for layer in model.layers:
-        if filter_func(layer):
-            l2 = tf.keras.regularizers.L2(lmbda)
-            layer.add_loss(lambda layer=layer: -l2(layer.kernel))
-            layer.add_loss(lambda layer=layer: -l2(layer.bias))
-            layer.add_loss(lambda layer=layer: -l2(layer.output))
+        if filter_func1(layer):
+            layer.kernel_regularizer = None
+            layer.bias_regularizer = None
+            layer.activity_regularizer = None
         else:
-            add_l2_w_a_loss(layer, lmbda)
+            remove_l2_w_a_loss(layer, lmbda)
     return model
+
 
 class L2NormPreprocessCallback(Callback):
     def __init__(self, args, translator: Translator, calib_dataset, validation_dataset, loss, metrics, norm_lmbda=0.001, calib_steps=10):
@@ -50,19 +63,22 @@ class L2NormPreprocessCallback(Callback):
         self.metrics = metrics
         self.norm_lmbda = norm_lmbda
         self.calib_steps = calib_steps
-    
+
     def on_train_begin(self, logs=None):
         for submodel in self.model.layers:
             add_l2_w_a_loss(submodel, lmbda=self.norm_lmbda)
-    
+
     def on_train_end(self, logs=None):
         for submodel in self.model.layers:
             remove_l2_w_a_loss(submodel, lmbda=self.norm_lmbda)
-    
+        self.model.compile()
+
     def on_epoch_end(self, epoch, logs=None):
         model_q = deepcopy(self.model)
-        self.translator.translate(model_q, self.calib_dataset, self.calib_steps, True, False)
-        quant_loss = test(self.args, self.model, self.validation_dataset, self.loss, self.metrics, False)
+        self.translator.translate(
+            model_q, self.calib_dataset, self.calib_steps, True, False)
+        quant_loss = test(
+            self.args, self.model, self.validation_dataset, self.loss, self.metrics, False)
 
         current_path = "last_epoch(quantization)"
         best_epoch_path = "best_epoch(quantization)"
@@ -76,13 +92,17 @@ class L2NormPreprocessCallback(Callback):
         if not os.path.isdir(best_epoch_path):
             save_checkpoint(best_epoch_path, self.model, meta)
         else:
-            best_epoch_meta = load_pkl(os.path.join(best_epoch_path, "meta.pkl"))
+            best_epoch_meta = load_pkl(
+                os.path.join(best_epoch_path, "meta.pkl"))
             if "loss" not in best_epoch_meta or quant_loss < best_epoch_meta["loss"]:
                 shutil.rmtree(best_epoch_path)
                 save_checkpoint(best_epoch_path, self.model, meta)
 
+
 def main(args, model, tnd_filename, calib_dataset, train_dataset, validation_dataset, loss, metrics, callbacks, norm_lmbda):
     translator = Translator(tnd_filename)
-    prep_callback = L2NormPreprocessCallback(args, translator, calib_dataset, validation_dataset, loss, metrics, norm_lmbda)
+    prep_callback = L2NormPreprocessCallback(
+        args, translator, calib_dataset, validation_dataset, loss, metrics, norm_lmbda)
     callbacks.append(prep_callback)
-    train(args, model, train_dataset, validation_dataset, loss, metrics, callbacks)
+    train(args, model, train_dataset,
+          validation_dataset, loss, metrics, callbacks)
