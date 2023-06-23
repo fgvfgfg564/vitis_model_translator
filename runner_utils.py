@@ -1,6 +1,8 @@
 from ctypes import *
 from typing import List
+
 import numpy as np
+
 try:
     import vart
 except ImportError as e:

@@ -1,13 +1,16 @@
-import os
-import numpy as np
 import logging
+import os
+
+import numpy as np
 from tqdm import tqdm
 
 RUNNERMODE = False
 
 try:
     import tensorflow as tf
-    from .translator_utils import dataset2np, get_quantized_model, deploy_qat_model
+
+    from .translator_utils import (dataset2np, deploy_qat_model,
+                                   get_quantized_model)
 except ModuleNotFoundError:
     RUNNERMODE = True
 

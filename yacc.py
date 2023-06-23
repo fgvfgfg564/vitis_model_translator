@@ -1,7 +1,7 @@
 import ply.yacc as yacc
-from .tndast import *
 
 from .lexer import tokens
+from .tndast import *
 
 
 def p_program_iter(p):

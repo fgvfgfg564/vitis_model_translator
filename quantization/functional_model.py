@@ -1,11 +1,13 @@
-from tensorflow_model_optimization.quantization.keras import vitis_quantize
-import tensorflow as tf
-import numpy as np
-from tensorflow import keras
-from keras.layers import *
-from .utils import *
-from copy import deepcopy
 import logging
+from copy import deepcopy
+
+import numpy as np
+import tensorflow as tf
+from keras.layers import *
+from tensorflow import keras
+from tensorflow_model_optimization.quantization.keras import vitis_quantize
+
+from .utils import *
 
 # ----- Set weights for layer & activations -----
 

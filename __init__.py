@@ -1,7 +1,7 @@
 import logging
 
 try:
-    from .translator import Translator, Deployer
+    from .translator import Deployer, Translator
 
     logging.info("Translator mode activated.")
 except ModuleNotFoundError:

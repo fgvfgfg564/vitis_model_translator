@@ -1,7 +1,9 @@
 from curses import use_default_colors
-from .yacc import yacc
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
+
+from .yacc import yacc
 
 
 class ASTFunctionBase:

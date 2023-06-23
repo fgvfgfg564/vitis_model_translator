@@ -1,7 +1,7 @@
-from preprocessing import *
 import tensorflow
-from tensorflow import keras
 from keras.layers import *
+from preprocessing import *
+from tensorflow import keras
 from utils import *
 
 d1 = Dense(10, name='branch1')

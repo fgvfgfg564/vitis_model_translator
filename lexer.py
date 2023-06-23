@@ -1,5 +1,6 @@
-import ply.lex as lex
 import logging
+
+import ply.lex as lex
 
 __all__ = (
     "tokens",

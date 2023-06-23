@@ -2,10 +2,11 @@
 This file should not be accessed under RUNNER MODE.
 """
 
-import tensorflow as tf
 from unittest import result
-from tensorflow_model_optimization.quantization.keras import vitis_quantize
+
 import numpy as np
+import tensorflow as tf
+from tensorflow_model_optimization.quantization.keras import vitis_quantize
 
 from .quantization.functional_model import quantize_model
 

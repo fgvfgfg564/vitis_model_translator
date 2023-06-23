@@ -1,11 +1,14 @@
-import tensorflow as tf
-from tensorflow import keras
-from keras.layers import *
-from keras.callbacks import Callback
 import argparse
-from lib.jobs import *
 from copy import deepcopy
+
+import tensorflow as tf
+from keras.callbacks import Callback
+from keras.layers import *
+from tensorflow import keras
+
+from lib.jobs import *
 from vitis_model_translator.translator import Translator
+
 
 def filter_func(layer):
     return isinstance(layer, (Conv2D, Conv2DTranspose, Dense))

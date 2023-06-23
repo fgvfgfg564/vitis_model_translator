@@ -1,6 +1,8 @@
-from queue import Queue
-from tensorflow import keras
 import logging
+from queue import Queue
+
+from tensorflow import keras
+
 
 def nodes_by_length(model):
     return model._nodes_by_length
