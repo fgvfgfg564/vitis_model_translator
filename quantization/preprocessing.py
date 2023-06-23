@@ -1,8 +1,11 @@
 import tensorflow as tf
 from tensorflow import keras
 from keras.layers import *
+from keras.callbacks import Callback
 import argparse
 from lib.jobs import *
+from copy import deepcopy
+from vitis_model_translator.translator import Translator
 
 def filter_func(layer):
     return isinstance(layer, (Conv2D, Conv2DTranspose, Dense))
@@ -25,7 +28,33 @@ def remove_l2_w_a_loss(model, lmbda):
             layer.add_loss(lambda layer=layer: -l2(layer.output))
     return model
 
-def main(args, model, train_dataset, validation_dataset, losses, metrics, callbacks, norm_lmbda):
-    add_l2_w_a_loss(model, lmbda=norm_lmbda)
-    # TODO: 实现preprocessing；calib dataset在过程中需要被引入；每个train epoch结束之后进行量化性能测试并保存最优的epoch
-    # train(args, model, train_dataset, validation_dataset, )
+class L2NormPreprocessCallback(Callback):
+    def __init__(self, translator: Translator, calib_dataset, validation_dataset, loss, metrics, norm_lmbda=0.001, calib_steps=10):
+        super().__init__()
+        self.translator = translator
+        self.calib_dataset = calib_dataset
+        self.validation_dataset = validation_dataset
+        self.loss = loss
+        self.metrics = metrics
+        self.norm_lmbda = norm_lmbda
+        self.calib_steps = calib_steps
+
+        self.best_loss = None
+    
+    def on_train_begin(self, logs=None):
+        add_l2_w_a_loss(self.model, lmbda=self.norm_lmbda)
+    
+    def on_train_end(self, logs=None):
+        remove_l2_w_a_loss(self.model, lmbda=self.norm_lmbda)
+    
+    def on_epoch_end(self, epoch, logs=None):
+        model_q = deepcopy(self.model)
+        self.translator.translate(model_q, self.calib_dataset, self.calib_steps, True, False)
+        loss_test = test()
+        # Perform quantization & save the epoch with best loss
+
+def main(args, model, tnd_filename, calib_dataset, train_dataset, validation_dataset, loss, metrics, callbacks, norm_lmbda):
+    translator = Translator(tnd_filename)
+    prep_callback = L2NormPreprocessCallback(translator, calib_dataset, validation_dataset, loss, metrics, norm_lmbda)
+    callbacks.append(prep_callback)
+    train(args, model, train_dataset, validation_dataset, loss, metrics, callbacks)
