@@ -121,10 +121,9 @@ def set_new_log_th_for_convolution(qconv_layer, activation_log_th=None):
 # ----- Capture the activations -----
 
 
-class ActivationRangeCapture(Layer):
-    def __init__(self, layer, trainable=True, name=None, dtype=None, dynamic=False, **kwargs):
-        super().__init__(trainable, name, dtype, dynamic, **kwargs)
-        self.layer = layer
+class ActivationRangeCapture(Wrapper):
+    def __init__(self, layer, **kwargs):
+        super().__init__(layer, **kwargs)
         self.log_th = tf.Variable(0., trainable=False, name="log_th")
 
     def call(self, inputs):
