@@ -39,7 +39,7 @@ def add_l2_w_a_loss(model, lmbda):
     return model
 
 
-def remove_l2_w_a_loss(model, lmbda):
+def remove_l2_w_a_loss(model):
     if not hasattr(model, 'layers'):
         return
     for layer in model.layers:
@@ -48,7 +48,7 @@ def remove_l2_w_a_loss(model, lmbda):
             layer.bias_regularizer = None
             layer.activity_regularizer = None
         else:
-            remove_l2_w_a_loss(layer, lmbda)
+            remove_l2_w_a_loss(layer)
     return model
 
 
@@ -70,15 +70,26 @@ class L2NormPreprocessCallback(Callback):
 
     def on_train_end(self, logs=None):
         for submodel in self.model.layers:
-            remove_l2_w_a_loss(submodel, lmbda=self.norm_lmbda)
+            remove_l2_w_a_loss(submodel)
         self.model.compile()
 
     def on_epoch_end(self, epoch, logs=None):
         model_q = deepcopy(self.model)
+        remove_l2_w_a_loss(model_q)
         self.translator.translate(
             model_q, self.calib_dataset, self.calib_steps, True, False)
         quant_loss = test(
-            self.args, self.model, self.validation_dataset, self.loss, self.metrics, False)
+            self.args, model_q, self.validation_dataset, self.loss, self.metrics, False)
+        
+        # Print & record validation results
+        tf.print(
+            tf.strings.format("  Epoch {}: val_loss={}", (epoch, quant_loss)), end=""
+        )
+        record_items = [epoch, quant_loss]
+        for metric in self.metrics:
+            tf.print(" - ", metric.name, "=", metric.result(), sep="", end="")
+            record_items.append(metric.result())
+        tf.print("\n")
 
         current_path = "last_epoch(quantization)"
         best_epoch_path = "best_epoch(quantization)"
@@ -97,6 +108,7 @@ class L2NormPreprocessCallback(Callback):
             if "loss" not in best_epoch_meta or quant_loss < best_epoch_meta["loss"]:
                 shutil.rmtree(best_epoch_path)
                 save_checkpoint(best_epoch_path, self.model, meta)
+        tf.keras.backend.clear_session()
 
 
 def main(args, model, tnd_filename, calib_dataset, train_dataset, validation_dataset, loss, metrics, callbacks, norm_lmbda):

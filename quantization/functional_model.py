@@ -167,7 +167,6 @@ def quantize_model(model, calib_dataset, calib_steps, scale_type='0.99'):
     """
     Returns a quantized model. Calibrated with a single NumPy batch
     """
-    model = deepcopy(model)
     quantizer = vitis_quantize.VitisQuantizer(
         model, quantize_strategy="8bit_tqt")
 
