@@ -111,6 +111,7 @@ class L2NormPreprocessCallback(Callback):
         tf.keras.backend.clear_session()
 
 
+
 def main(args, model, tnd_filename, calib_dataset, train_dataset, validation_dataset, loss, metrics, callbacks, norm_lmbda):
     translator = Translator(tnd_filename)
     prep_callback = L2NormPreprocessCallback(
