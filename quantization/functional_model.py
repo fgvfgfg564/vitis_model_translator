@@ -1,4 +1,5 @@
 import logging
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -9,8 +10,12 @@ from tensorflow_model_optimization.quantization.keras import vitis_quantize
 
 from .utils import *
 
-# ----- Set weights for layer & activations -----
+# Locate the quantize strategy
+current_dir = os.path.split(__file__)[0]
+quantize_config_filename = os.path.join(current_dir, "strategy_STE.json")
+empty_config_filename = os.path.join(current_dir, "strategy_empty.json")
 
+# ----- Set weights for layer & activations -----
 
 def min_max_from_log_th(log_th):
     clogth = np.ceil(log_th)
@@ -56,6 +61,8 @@ def set_log_ths_for_convolution(q_conv, new_weight_log_th, new_bias_log_th, new_
         step = old_weights[4]
         new_weights = [new_weight_log_th, k, new_bias_log_th,
                        b, step, minxw, maxxw, minxb, maxxb]
+    q_conv.weights[0]._trainable = False
+
     q_conv.set_weights(new_weights)
 
 # ----- Calculation of tensor ranges -----
@@ -163,35 +170,40 @@ def remove_activation_capture(model):
 # ----- Model quantization -----
 
 
-def quantize_model(model, calib_dataset, calib_steps, scale_type='0.99'):
+def quantize_model(model, init_quant, calib_dataset, calib_steps, scale_type='0.99'):
     """
     Returns a quantized model. Calibrated with a single NumPy batch
     """
     quantizer = vitis_quantize.VitisQuantizer(
         model, quantize_strategy="8bit_tqt")
+    if init_quant:
+        quantizer.set_quantize_strategy(new_quantize_strategy=quantize_config_filename)
 
-    # Use Vitis Quantizer to apply CLE
-    model_cle = quantizer.get_qat_model(init_quant=True, calib_dataset=calib_dataset,
-                                        calib_steps=calib_steps)
+        # Use Vitis Quantizer to apply CLE
+        model_cle = quantizer.get_qat_model(init_quant=True, calib_dataset=calib_dataset,
+                                            calib_steps=calib_steps)
 
-    model_capture = add_activation_capture(model_cle)
-    if isinstance(calib_dataset, list):
-        # Multiple inputs
-        sample = []
-        for d in calib_dataset:
-            if isinstance(d, tf.data.Dataset):
-                for s in d:
-                    sample.append(s)
-            else:
-                sample.append(d)
-    elif isinstance(calib_dataset, tf.data.Dataset):
-        sample = next(calib_dataset.iter())
+        model_capture = add_activation_capture(model_cle)
+        if isinstance(calib_dataset, list):
+            # Multiple inputs
+            sample = []
+            for d in calib_dataset:
+                if isinstance(d, tf.data.Dataset):
+                    for s in d:
+                        sample.append(s)
+                else:
+                    sample.append(d)
+        elif isinstance(calib_dataset, tf.data.Dataset):
+            sample = next(calib_dataset.iter())
+        else:
+            sample = calib_dataset
+        _ = model_capture(sample)
+        for layer in model_capture.layers:
+            if isinstance(layer, ActivationRangeCapture):
+                layer.apply_to_layer()
+        model_optimized = remove_activation_capture(model_capture)
     else:
-        sample = calib_dataset
-    _ = model_capture(sample)
-    for layer in model_capture.layers:
-        if isinstance(layer, ActivationRangeCapture):
-            layer.apply_to_layer()
-    model_optimized = remove_activation_capture(model_capture)
+        quantizer.set_quantize_strategy(new_quantize_strategy=empty_config_filename)
+        model_optimized = quantizer.get_qat_model(init_quant=False)
 
     return model_optimized

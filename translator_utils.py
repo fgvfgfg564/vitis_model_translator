@@ -12,7 +12,7 @@ from .quantization.functional_model import quantize_model
 
 
 def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=False, use_default=False):
-    if init_quant == False or use_default:
+    if use_default:
         quantizer = vitis_quantize.VitisQuantizer(model, quantize_strategy="8bit_tqt")
         if not init_quant:
             qat_model = quantizer.get_qat_model(init_quant=False)
@@ -30,7 +30,7 @@ def get_quantized_model(model, calib_dataset=None, calib_steps=None, init_quant=
                 each.assign(each * 0.0 + 1e100)
         return qat_model
     else:
-        return quantize_model(model, calib_dataset, calib_steps)
+        return quantize_model(model, init_quant, calib_dataset, calib_steps)
 
 
 def deploy_qat_model(model, output_file):
